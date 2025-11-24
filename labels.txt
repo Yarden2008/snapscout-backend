@@ -1,0 +1,6 @@
+keyboard
+mouse
+phone
+controller
+laptop
+charger
