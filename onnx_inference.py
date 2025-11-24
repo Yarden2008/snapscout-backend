@@ -3,7 +3,8 @@ import numpy as np
 from PIL import Image
 
 # ----- Load model -----
-session = ort.InferenceSession("model.onnx", providers=["CPUExecutionProvider"])
+session = ort.InferenceSession("mobilenetv2-7.onnx", providers=["CPUExecutionProvider"])
+
 
 # You may adjust based on your model:
 IMG_SIZE = 224
