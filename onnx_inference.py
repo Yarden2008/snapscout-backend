@@ -4,7 +4,7 @@ from PIL import Image
 import json
 
 # ----- Load model -----
-session = ort.InferenceSession("mobilenetv2-7.onnx", providers=["CPUExecutionProvider"])
+session = ort.InferenceSession("model.onnx", providers=["CPUExecutionProvider"])
 
 # Load 1000 ImageNet class names
 with open("imagenet-simple-labels.json", "r") as f:
