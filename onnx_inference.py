@@ -10,6 +10,10 @@ session = ort.InferenceSession("mobilenetv2-7.onnx", providers=["CPUExecutionPro
 IMG_SIZE = 224
 LABELS = [line.strip() for line in open("labels.txt", "r").readlines()]
 
+shape = session.get_outputs()[0].shape
+print("OUTPUT SHAPE =", shape)
+
+
 def preprocess(img: Image.Image):
     img = img.resize((IMG_SIZE, IMG_SIZE))
     arr = np.array(img).astype("float32") / 255.0
