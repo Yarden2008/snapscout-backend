@@ -4,9 +4,16 @@ from PIL import Image
 
 # ----- Load model -----
 session = ort.InferenceSession("mobilenetv2-7.onnx", providers=["CPUExecutionProvider"])
-# DEBUG: print model input and output shapes
-print("MODEL INPUTS:", session.get_inputs())
-print("MODEL OUTPUTS:", session.get_outputs())
+# DEBUG — print model input/output details
+for inp in session.get_inputs():
+    print("INPUT NAME:", inp.name)
+    print("INPUT SHAPE:", inp.shape)
+    print("INPUT TYPE:", inp.type)
+
+for out in session.get_outputs():
+    print("OUTPUT NAME:", out.name)
+    print("OUTPUT SHAPE:", out.shape)
+    print("OUTPUT TYPE:", out.type)
 
 
 # You may adjust based on your model:
