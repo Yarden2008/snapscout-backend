@@ -1,26 +1,16 @@
 import onnxruntime as ort
 import numpy as np
 from PIL import Image
+import json
 
 # ----- Load model -----
 session = ort.InferenceSession("mobilenetv2-7.onnx", providers=["CPUExecutionProvider"])
-# DEBUG — print model input/output details
-for inp in session.get_inputs():
-    print("INPUT NAME:", inp.name)
-    print("INPUT SHAPE:", inp.shape)
-    print("INPUT TYPE:", inp.type)
 
-for out in session.get_outputs():
-    print("OUTPUT NAME:", out.name)
-    print("OUTPUT SHAPE:", out.shape)
-    print("OUTPUT TYPE:", out.type)
+# Load 1000 ImageNet class names
+with open("imagenet-simple-labels.json", "r") as f:
+    LABELS = json.load(f)
 
-
-# You may adjust based on your model:
 IMG_SIZE = 224
-LABELS = [line.strip() for line in open("labels.txt", "r").readlines()]
-
-
 
 def preprocess(img: Image.Image):
     img = img.resize((IMG_SIZE, IMG_SIZE))
@@ -33,8 +23,10 @@ def classify_image(img: Image.Image):
     input_tensor = preprocess(img)
     inputs = {session.get_inputs()[0].name: input_tensor}
 
-    outputs = session.run(None, inputs)[0]
+    outputs = session.run(None, inputs)[0]   # shape: (1, 1000)
     probs = outputs[0]
 
     idx = int(np.argmax(probs))
-    return LABELS[idx], float(probs[idx])
+    label = LABELS[idx] if 0 <= idx < len(LABELS) else f"class_{idx}"
+    return label, float(probs[idx])
+
