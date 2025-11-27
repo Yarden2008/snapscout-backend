@@ -4,8 +4,10 @@ from PIL import Image
 
 # ----- Load model -----
 session = ort.InferenceSession("mobilenetv2-7.onnx", providers=["CPUExecutionProvider"])
-shape = session.get_outputs()[0].shape
-print("OUTPUT SHAPE =", shape)
+# DEBUG: print model input and output shapes
+print("MODEL INPUTS:", session.get_inputs())
+print("MODEL OUTPUTS:", session.get_outputs())
+
 
 # You may adjust based on your model:
 IMG_SIZE = 224
