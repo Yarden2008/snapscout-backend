@@ -4,7 +4,7 @@ from PIL import Image
 
 # Load ONNX model
 session = ort.InferenceSession(
-    "mobilenetv2-7.onnx",
+    "model/mobilenetv2-10.onnx",
     providers=["CPUExecutionProvider"]
 )
 
@@ -17,25 +17,15 @@ IMG_SIZE = 224
 def preprocess(img: Image.Image):
     img = img.resize((IMG_SIZE, IMG_SIZE))
     arr = np.array(img).astype("float32") / 255.0
-
-    # ImageNet normalization (CRITICAL for accuracy)
-    mean = np.array([0.485, 0.456, 0.406])
-    std = np.array([0.229, 0.224, 0.225])
-    arr = (arr - mean) / std
-
     arr = np.transpose(arr, (2, 0, 1))  # HWC → CHW
     arr = np.expand_dims(arr, axis=0)
     return arr
 
 def classify_image(img: Image.Image):
-    input_tensor = preprocess(img)
-
-    inputs = {session.get_inputs()[0].name: input_tensor}
-    outputs = session.run(None, inputs)[0]  # shape: (1, 1000)
+    arr = preprocess(img)
+    input_name = session.get_inputs()[0].name
+    outputs = session.run(None, {input_name: arr})[0]
+    
     probs = outputs[0]
-
-    # Get top 5 predictions
-    top5 = probs.argsort()[-5:][::-1]
-    results = [(LABELS[i], float(probs[i])) for i in top5]
-
-    return results
+    idx = int(np.argmax(probs))
+    return LABELS[idx], float(probs[idx])
