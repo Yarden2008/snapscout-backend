@@ -1,73 +1,48 @@
 import onnxruntime as ort
 import numpy as np
-import json
 from PIL import Image
 
-# ------------ LOAD MODEL ------------
-MODEL_PATH = "mobilenetv2-10.onnx"
-session = ort.InferenceSession(MODEL_PATH, providers=["CPUExecutionProvider"])
-
-# Print model info (useful for debugging)
-print("INPUT:", session.get_inputs()[0].name, session.get_inputs()[0].shape)
-print("OUTPUT:", session.get_outputs()[0].name, session.get_outputs()[0].shape)
-
-# ------------ LOAD LABELS ------------
-IMAGENET_CLASSES = [c.strip() for c in open("imagenet_classes.txt", "r").readlines()]
-SNAPSCOUT_LABELS = [c.strip() for c in open("labels.txt", "r").readlines()]
-
-# ------------ LOAD CATEGORY MAP ------------
-with open("category_map.json", "r") as f:
-    CATEGORY_MAP = json.load(f)
+# Load ONNX model
+session = ort.InferenceSession("mobilenetv2-10.onnx", providers=["CPUExecutionProvider"])
 
 IMG_SIZE = 224
 
+# Load labels safely
+with open("imagenet_classes.txt", "r") as f:
+    LABELS = [line.strip() for line in f.readlines()]
 
 def preprocess(img: Image.Image):
     img = img.resize((IMG_SIZE, IMG_SIZE))
     arr = np.array(img).astype("float32") / 255.0
-    arr = np.transpose(arr, (2, 0, 1))  # HWC → CHW
-    arr = np.expand_dims(arr, axis=0)
-    return arr
-
-
-def imagenet_to_snapscout(class_name: str):
-    """
-    Converts raw ImageNet class → SnapScout category
-    using semantic keyword matching.
-    """
-    class_name = class_name.lower()
-
-    for snap_cat, keywords in CATEGORY_MAP.items():
-        for kw in keywords:
-            if kw in class_name:
-                return snap_cat
-
-    # If nothing matched → return unknown
-    return "unknown"
-
+    arr = np.transpose(arr, (2, 0, 1))
+    return np.expand_dims(arr, axis=0)
 
 def classify_image(img: Image.Image):
-    input_tensor = preprocess(img)
-    inputs = {session.get_inputs()[0].name: input_tensor}
+    try:
+        input_tensor = preprocess(img)
 
-    # Run inference
-    outputs = session.run(None, inputs)[0]
-    probs = outputs[0]
+        inputs = {session.get_inputs()[0].name: input_tensor}
 
-    # Top-5 indices
-    top5_idx = np.argsort(probs)[-5:][::-1]
+        outputs = session.run(None, inputs)
 
-    # Map them to SnapScout categories
-    mapped = []
-    for idx in top5_idx:
-        imagenet_label = IMAGENET_CLASSES[idx]
-        score = float(probs[idx])
-        snap_cat = imagenet_to_snapscout(imagenet_label)
-        mapped.append({"snap_category": snap_cat, "imagenet": imagenet_label, "confidence": score})
+        if outputs is None or len(outputs) == 0:
+            return "Unknown", 0.0
 
-    # Sort by confidence but prioritize known categories
-    mapped.sort(key=lambda x: (-x["confidence"], x["snap_category"] != "unknown"))
+        probs = outputs[0]
 
-    # Return top 1 SnapScout category
-    best = mapped[0]
-    return best["snap_category"], best["confidence"]
+        # Validate output shape
+        if probs is None or len(probs) == 0:
+            return "Unknown", 0.0
+
+        probs = probs[0]
+
+        # If probability vector is wrong length
+        if len(probs) != len(LABELS):
+            return "Unknown", 0.0
+
+        idx = int(np.argmax(probs))
+        return LABELS[idx], float(probs[idx])
+
+    except Exception as e:
+        print("Model error:", e)
+        return "Error", 0.0
