@@ -3,54 +3,39 @@ import numpy as np
 from PIL import Image
 
 # Load ONNX model
-session = ort.InferenceSession("mobilenetv3_large.onnx", providers=["CPUExecutionProvider"])
+session = ort.InferenceSession(
+    "mobilenetv2-7.onnx",
+    providers=["CPUExecutionProvider"]
+)
 
-# Load ImageNet labels (1,000 classes)
-LABELS = [line.strip() for line in open("labels.txt", "r").readlines()]
+# Load labels
+with open("labels.txt", "r") as f:
+    LABELS = [line.strip() for line in f.readlines()]
+
+IMG_SIZE = 224
 
 def preprocess(img: Image.Image):
-    # 1) Resize shortest side to 256
-    img = img.convert("RGB")
-    w, h = img.size
-    scale = 256 / min(w, h)
-    img = img.resize((int(w * scale), int(h * scale)))
-
-    # 2) Center crop 224x224
-    w, h = img.size
-    left = (w - 224) / 2
-    top = (h - 224) / 2
-    right = left + 224
-    bottom = top + 224
-    img = img.crop((left, top, right, bottom))
-
-    # 3) Convert to numpy
+    img = img.resize((IMG_SIZE, IMG_SIZE))
     arr = np.array(img).astype("float32") / 255.0
 
-    # 4) Normalize with ImageNet mean/std
+    # ImageNet normalization (CRITICAL for accuracy)
     mean = np.array([0.485, 0.456, 0.406])
     std = np.array([0.229, 0.224, 0.225])
     arr = (arr - mean) / std
 
-    # 5) HWC → CHW
-    arr = np.transpose(arr, (2, 0, 1))
-
-    # 6) Add batch dimension
+    arr = np.transpose(arr, (2, 0, 1))  # HWC → CHW
     arr = np.expand_dims(arr, axis=0)
-
     return arr
 
 def classify_image(img: Image.Image):
-    x = preprocess(img)
-    inp = {session.get_inputs()[0].name: x}
+    input_tensor = preprocess(img)
 
-    out = session.run(None, inp)[0][0]
+    inputs = {session.get_inputs()[0].name: input_tensor}
+    outputs = session.run(None, inputs)[0]  # shape: (1, 1000)
+    probs = outputs[0]
 
-    # Softmax
-    exp = np.exp(out - np.max(out))
-    probs = exp / exp.sum()
+    # Get top 5 predictions
+    top5 = probs.argsort()[-5:][::-1]
+    results = [(LABELS[i], float(probs[i])) for i in top5]
 
-    idx = int(np.argmax(probs))
-    label = LABELS[idx]
-    score = float(probs[idx])
-
-    return label, score
+    return results
