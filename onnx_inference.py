@@ -23,7 +23,7 @@ def softmax(x):
     return e / np.sum(e)
 
 session = ort.InferenceSession(
-    "mobilenetv2-10.onnx",
+    "mobilenetv2-10 (1).onnx",
     providers=["CPUExecutionProvider"]
 )
 
