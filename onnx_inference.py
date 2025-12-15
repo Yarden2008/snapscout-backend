@@ -4,7 +4,7 @@ import numpy as np
 from PIL import Image
 
 # ---------- LOAD LABELS ----------
-with open("labels.json", "r") as f:
+with open("imagenet_labels.json", "r") as f:
     raw = json.load(f)
 
 # מקרה 1: "0": "tench"
